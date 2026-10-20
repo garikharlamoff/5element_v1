@@ -22,7 +22,6 @@ def parse_5element_with_characteristics():
 
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # Собираем ссылки на товары из каталога
     items = soup.select(".product-card") or soup.select("[data-product]") or soup.select(".catalog-grid__item")
     
     product_links = []
@@ -38,7 +37,6 @@ def parse_5element_with_characteristics():
 
     all_products_data = []
 
-    # Шаг 2: Обходим каждый товар по отдельности
     for index, link in enumerate(product_links, 1):
         print(f"[{index}/{len(product_links)}] Парсим характеристики товара: {link}")
         try:
@@ -49,29 +47,22 @@ def parse_5element_with_characteristics():
             
             prod_soup = BeautifulSoup(prod_resp.text, "html.parser")
 
-            # Название товара
             title_elem = prod_soup.select_one("h1") or prod_soup.select_one(".product-title")
             title = title_elem.get_text(strip=True) if title_elem else "—"
 
-            # Цена
             price_elem = prod_soup.select_one(".product-price__current") or prod_soup.select_one(".price") or prod_soup.select_one("[data-price]")
             price = price_elem.get_text(strip=True) if price_elem else "—"
 
-            # Старая цена
             old_price_elem = prod_soup.select_one(".product-price__old") or prod_soup.select_one(".price-old")
             old_price = old_price_elem.get_text(strip=True) if old_price_elem else "—"
 
-            # Статус наличия
             status_elem = prod_soup.select_one(".product-status") or prod_soup.select_one(".status")
             status = status_elem.get_text(strip=True) if status_elem else "В наличии"
 
-            # Сбор характеристик со страницы товара (включая блок #characteristics)
             specs = {}
-            # Универсальный поиск строк характеристик на страницах 5элемента
             spec_rows = prod_soup.select(".specifications__item, .product-characteristics tr, .characteristics-table tr, .chars-item, table tr")
             
             for row in spec_rows:
-                # Пробуем найти ячейки ключа и значения
                 name_elem = row.select_one(".specifications__name, .chars-name, th, td:first-child")
                 val_elem = row.select_one(".specifications__value, .chars-value, td:last-child")
                 
@@ -81,7 +72,6 @@ def parse_5element_with_characteristics():
                     if key and val:
                         specs[key] = val
 
-            # Если табличные теги не подошли, пробуем искать через общие блоки характеристик
             if not specs:
                 for div in prod_soup.select("[class*='spec'], [class*='char']"):
                     text = div.get_text(strip=True)
@@ -90,12 +80,10 @@ def parse_5element_with_characteristics():
                         if len(parts) == 2:
                             specs[parts[0].strip()] = parts[1].strip()
 
-            # Выделяем ключевые параметры для удобного сравнения в таблице
             power = specs.get("Мощность", specs.get("Мощность, Вт", "—"))
             panels = specs.get("Сменные панели", specs.get("Комплектация", specs.get("Насадки", "—")))
             coating = specs.get("Антипригарное покрытие", "—")
             
-            # Склеиваем все найденные характеристики в одну строку для детального анализа
             all_specs_str = " | ".join([f"{k}: {v}" for k, v in specs.items()]) if specs else "Характеристики не найдены"
 
             all_products_data.append({
@@ -110,13 +98,11 @@ def parse_5element_with_characteristics():
                 "Ссылка": link + "#characteristics"
             })
 
-            # Пауза между запросами (защита от блокировки)
             time.sleep(1.2)
 
         except Exception as e:
             print(f"  -> Ошибка при обработке товара: {e}")
 
-    # Сохранение в CSV-файл с разделителем точка с запятой (идеально для Excel)
     filename = "buterbrodnicy_full_comparison.csv"
     fieldnames = [
         "Наименование", "Цена (BYN)", "Старая цена (BYN)", "Статус", 
